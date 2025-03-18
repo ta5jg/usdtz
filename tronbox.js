@@ -1,3 +1,4 @@
+require('dotenv').config();
 const port = process.env.HOST_PORT || 9090
 
 module.exports = {
@@ -36,8 +37,8 @@ Then, run the migration with:
     },
     development: {
       // For tronbox/tre docker image
-      privateKey: '0000000000000000000000000000000000000000000000000000000000000001',
-      userFeePercentage: 0,
+      privateKey: process.env.PRIVATE_KEY_SHASTA,
+      userFeePercentage: 100,
       feeLimit: 1000 * 1e6,
       fullHost: 'http://127.0.0.1:' + port,
       network_id: '9'
