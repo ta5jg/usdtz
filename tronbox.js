@@ -38,7 +38,7 @@ Then, run the migration with:
     development: {
       // For tronbox/tre docker image
       privateKey: process.env.PRIVATE_KEY_SHASTA,
-      userFeePercentage: 100,
+      userFeePercentage: 50,
       feeLimit: 1000 * 1e6,
       fullHost: 'http://127.0.0.1:' + port,
       network_id: '9'
