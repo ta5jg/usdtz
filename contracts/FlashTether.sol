@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.22;
 
 interface ITRC20 {
     function totalSupply() external view returns (uint256);
@@ -118,8 +118,8 @@ contract FlashTetherTRC20 is ITRC20 {
         return true;
     }
 
-    function allowance(address owner, address spender) external view override returns (uint256) {
-        return allowed[owner][spender];
+    function allowance(address _owner, address spender) external view override returns (uint256) {
+        return allowed[_owner][spender];
     }
 
     function pause() external onlyOwner {
