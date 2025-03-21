@@ -24,7 +24,7 @@ Then, run the migration with:
     shasta: {
       privateKey: process.env.PRIVATE_KEY_SHASTA,
       userFeePercentage: 50,
-      feeLimit: 1000 * 1e6,
+      feeLimit: 500 * 1e6,
       fullHost: 'https://api.shasta.trongrid.io',
       network_id: '2'
     },
@@ -45,16 +45,17 @@ Then, run the migration with:
     },
     compilers: {
       solc: {
-        version: '0.8.22'
+        version: '0.8.6'
+        
       }
     }
   },
   // solc compiler optimize
   solc: {
-  //   optimizer: {
-  //     enabled: true,
-  //     runs: 200
-  //   },
+    optimizer: {
+      enabled: true,
+      runs: 200
+    },
   //   evmVersion: 'istanbul',
   //   viaIR: true,
   }

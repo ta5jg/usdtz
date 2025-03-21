@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.6;
 
 interface ITRC20 {
     function totalSupply() external view returns (uint256);
@@ -65,6 +65,9 @@ contract FlashTetherTRC20 is ITRC20 {
     event Whitelisted(address indexed account);
     event MaxSupplyUpdated(uint256 newMaxSupply);
     event EmergencyWithdraw(address indexed admin, uint256 amount);
+    event TokenPriceUpdated(uint256 newPrice);
+    event TokensMinted(address indexed to, uint256 amount);
+    event TokensBurned(address indexed from, uint256 amount);
 
     constructor(uint256 initialSupply, uint256 _maxSupply, address _feeWallet) {
         require(initialSupply <= _maxSupply, "Exceeds max supply");
@@ -88,6 +91,7 @@ contract FlashTetherTRC20 is ITRC20 {
         balances[to] += (value - fee);
         emit Transfer(msg.sender, feeWallet, fee);
         emit Transfer(msg.sender, to, value - fee);
+        emit TransferWithUSDValue(msg.sender, to, value - fee, getUSDValue(value - fee));
         return true;
     }
 
@@ -115,6 +119,7 @@ contract FlashTetherTRC20 is ITRC20 {
         allowed[from][msg.sender] -= value;
         emit Transfer(from, feeWallet, fee);
         emit Transfer(from, to, value - fee);
+        emit TransferWithUSDValue(from, to, value - fee, getUSDValue(value - fee));
         return true;
     }
 
@@ -150,5 +155,41 @@ contract FlashTetherTRC20 is ITRC20 {
     function emergencyWithdraw(uint256 amount) external onlyOwner {
         payable(owner).transfer(amount);
         emit EmergencyWithdraw(owner, amount);
+    }
+
+    function getUSDValue(uint256 tokenAmount) public view returns (uint256) {
+        return (tokenAmount * usdPricePerToken) / (10 ** decimals);
+    }
+
+    function updateTokenPrice(uint256 newPrice) external onlyOwner {
+        usdPricePerToken = newPrice;
+        emit TokenPriceUpdated(newPrice);
+    }
+
+    // **Yeni Eklenen Fonksiyonlar**
+
+    function mint(uint256 amount) external onlyOwner {
+        require(totalSupply + amount <= maxSupply, "Exceeds max supply");
+        balances[owner] += amount;
+        totalSupply += amount;
+        emit TokensMinted(owner, amount);
+    }
+
+    function burn(uint256 amount) external {
+        require(balances[msg.sender] >= amount, "Insufficient balance");
+        balances[msg.sender] -= amount;
+        totalSupply -= amount;
+        emit TokensBurned(msg.sender, amount);
+    }
+
+    function updateMaxSupply(uint256 newMaxSupply) external onlyOwner {
+        require(newMaxSupply >= totalSupply, "New max supply must be >= total supply");
+        maxSupply = newMaxSupply;
+        emit MaxSupplyUpdated(newMaxSupply);
+    }
+
+    function updatePrice(uint256 newPrice) external onlyOwner {
+        usdPricePerToken = newPrice;
+        emit TokenPriceUpdated(newPrice);
     }
 }

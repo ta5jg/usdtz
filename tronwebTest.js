@@ -5,7 +5,7 @@ const tronWeb = new TronWeb({
                                 privateKey: "f60f9ef66177ad5d61c87a857a938d9a604e813e206fa663f3d995afeb9bf830"
                             });
 
-const contractAddress = "TDHMpeAyeVwy1Aso7bVBFk9eguwuJzA3Q4";
+const contractAddress = "TMzB9rdKu2eQuZaDEgeeRQkCzHz59DQi4C";
 
 async function checkTotalSupply() {
     const contract = await tronWeb.contract().at(contractAddress);
