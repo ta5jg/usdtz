@@ -1,0 +1,14 @@
+{
+  "symbol": "USDTz",
+  "name": "Flash Tether",
+  "address": "41c6b89033c79272ee46dd8547c3bb61a179c1eccd",
+  "decimals": 6,
+  "website": "https://flashusdt.io",
+  "email": "info@flashusdt.io",
+  "description": "USDTz is a TRC20 stablecoin with Chainlink-compatible price feed. The token is designed for fast, secure, and price-synced transactions on the TRON blockchain.",
+  "links": {
+    "whitepaper": "https://flashusdt.io/whitepaper.pdf",
+    "github": "https://github.com/ta5jg/usdtz"
+  },
+  "logo": "https://raw.githubusercontent.com/ta5jg/usdtz/main/logo.png"
+}
