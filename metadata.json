@@ -1,0 +1,14 @@
+{
+  "name": "USDTz Token",
+  "symbol": "USDTz",
+  "type": "TRC20",
+  "decimals": 6,
+  "description": "USDTz is a stablecoin backed project deployed on TRON and BSC with Chainlink-powered USD price visibility.",
+  "website": "https://usdtz.org",
+  "contact": {
+    "email": "info@usdtz.org",
+    "twitter": "https://twitter.com/FlashTether",
+    "github": "https://github.com/ta5jg/usdtz"
+  },
+  "logo": "https://raw.githubusercontent.com/ta5jg/usdtz/main/logo.png"
+}
