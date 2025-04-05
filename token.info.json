@@ -1,0 +1,10 @@
+{
+    "symbol": "USDTz",
+    "name": "Flash Tether",
+    "decimals": 18,
+    "address": "0x5FbDB2315678afecb367f032d93F642f64180aa3", 
+    "chainId": 31337,
+    "price": 1.00,
+    "logoURI": "https://raw.githubusercontent.com/ta5jg/usdtz/main/logo.png"
+  }
+  
